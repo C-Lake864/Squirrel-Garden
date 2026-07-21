@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node --experimental-sqlite server.js"
+    "start": "node --experimental-sqlite server.js",
+    "test": "node --test --experimental-sqlite"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

@@ -8,6 +8,19 @@ const todayStr = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
+// 지금 보고 있는 조건
+const NO_CATEGORY = '__none__';
+let currentDate = todayStr();   // '날짜별' 보기에서 고른 날짜
+let currentCategory = '';       // '' = 모두, '__none__' = 카테고리 없음, 그 외 = 카테고리 이름
+
+// 날짜 문자열('YYYY-MM-DD')에서 n일 뒤(음수면 앞) 날짜
+const pad2 = (n) => String(n).padStart(2, '0');
+function shiftDate(str, n) {
+  const [y, m, d] = str.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
 // 사용자가 입력한 글자가 HTML을 깨뜨리지 않도록 escape (안전)
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) =>
@@ -91,11 +104,28 @@ async function loadGarden() {
 }
 
 // ---------- 할 일 목록 그리기 ----------
+function updateListTitle() {
+  const el = document.getElementById('list-title');
+  if (currentFilter === 'all') el.textContent = '전체 할 일';
+  else if (currentFilter === 'date' && currentDate !== todayStr()) {
+    const [, m, d] = currentDate.split('-').map(Number);
+    el.textContent = `${m}월 ${d}일의 할 일`;
+  } else el.textContent = '오늘의 할 일';
+}
+
 async function loadTodos() {
-  const todos = await api(`/api/todos?filter=${currentFilter}`);
+  updateListTitle();
+  const q = new URLSearchParams({ filter: currentFilter });
+  if (currentFilter === 'date') q.set('date', currentDate);
+  if (currentCategory) q.set('category', currentCategory);
+  const todos = await api(`/api/todos?${q}`);
   const ul = document.getElementById('todo-list');
   if (todos.length === 0) {
-    ul.innerHTML = `<li class="empty">${currentFilter === 'today' ? '오늘 할 일이 없어요. 하나 추가해볼까요?' : '할 일이 없어요.'}</li>`;
+    let msg = '할 일이 없어요.';
+    if (currentCategory) msg = '이 카테고리에는 할 일이 없어요.';
+    else if (currentFilter === 'today') msg = '오늘 할 일이 없어요. 하나 추가해볼까요?';
+    else if (currentFilter === 'date') msg = '이 날에는 할 일이 없어요.';
+    ul.innerHTML = `<li class="empty">${msg}</li>`;
     return;
   }
   const today = todayStr();
@@ -128,7 +158,22 @@ async function loadTodos() {
     .join('');
 }
 
+// 쓰이고 있는 카테고리로 필터 버튼을 만든다
+async function loadCategories() {
+  const { categories, uncategorized } = await api('/api/categories');
+  const items = [['', '모두'], ...categories.map((c) => [c, c])];
+  if (uncategorized > 0) items.push([NO_CATEGORY, '미분류']);
+  // 보고 있던 카테고리가 사라졌으면(마지막 할 일을 지움 등) 모두로 되돌린다
+  if (!items.some(([v]) => v === currentCategory)) currentCategory = '';
+  const box = document.getElementById('cats');
+  box.hidden = categories.length === 0; // 카테고리가 하나도 없으면 필터 줄을 숨긴다
+  box.innerHTML = items
+    .map(([v, label]) => `<button type="button" data-cat="${escapeHtml(v)}" class="${v === currentCategory ? 'active' : ''}" aria-pressed="${v === currentCategory}">${escapeHtml(label)}</button>`)
+    .join('');
+}
+
 async function refresh() {
+  await loadCategories(); // 먼저 해서, 사라진 카테고리를 걸러낸 뒤 목록을 읽는다
   await Promise.all([loadTodos(), loadGarden()]);
 }
 
@@ -148,14 +193,40 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   refresh();
 });
 
+// ---- 날짜별 보기: 날짜 고르기, 이전/다음 날 ----
+const datePick = document.getElementById('date-pick');
+const dateToday = document.getElementById('date-today');
+function setDate(d) {
+  currentDate = d;
+  datePick.value = d;
+  dateToday.disabled = d === todayStr(); // 이미 오늘이면 '오늘' 버튼은 쓸 필요가 없다
+  loadTodos();
+}
+datePick.value = currentDate;
+dateToday.disabled = true;
+document.getElementById('date-prev').addEventListener('click', () => setDate(shiftDate(currentDate, -1)));
+document.getElementById('date-next').addEventListener('click', () => setDate(shiftDate(currentDate, 1)));
+dateToday.addEventListener('click', () => setDate(todayStr()));
+datePick.addEventListener('change', () => { if (datePick.value) setDate(datePick.value); });
+
 document.querySelectorAll('.filters button').forEach((btn) =>
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filters button').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     currentFilter = btn.dataset.filter;
+    document.getElementById('date-nav').hidden = currentFilter !== 'date';
     loadTodos();
   })
 );
+
+// ---- 카테고리 필터 ----
+document.getElementById('cats').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  currentCategory = btn.dataset.cat;
+  loadCategories();
+  loadTodos();
+});
 
 // 목록 안의 버튼/체크박스는 위임으로 한 번에 처리
 document.getElementById('todo-list').addEventListener('click', async (e) => {

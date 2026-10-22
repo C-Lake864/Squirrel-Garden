@@ -30,7 +30,7 @@
 
       <!-- 할 일 -->
       <section class="todos">
-        <h2 class="section-title">오늘의 할 일</h2>
+        <h2 class="section-title" id="list-title">오늘의 할 일</h2>
         <div class="tip">대충하기 버튼을 누르면 할 일을 더 쉽게 만들 수 있어요!<br />매일의 습관을 만들어보아요!</div>
         <form id="add-form" autocomplete="off">
           <input type="text" id="title" placeholder="할 일을 입력하세요" required />
@@ -43,8 +43,20 @@
 
         <div class="filters">
           <button data-filter="today" class="active">오늘 할 일</button>
+          <button data-filter="date">날짜별</button>
           <button data-filter="all">전체</button>
         </div>
+
+        <!-- '날짜별'을 눌렀을 때만 보인다 -->
+        <div class="date-nav" id="date-nav" hidden>
+          <button type="button" id="date-prev" class="nav-btn" aria-label="이전 날">‹</button>
+          <input type="date" id="date-pick" aria-label="날짜 선택" />
+          <button type="button" id="date-next" class="nav-btn" aria-label="다음 날">›</button>
+          <button type="button" id="date-today" class="today-btn">오늘</button>
+        </div>
+
+        <!-- 카테고리 필터: 쓰이고 있는 카테고리로 자동으로 만들어진다 -->
+        <div class="cats" id="cats" role="group" aria-label="카테고리" hidden></div>
 
         <ul id="todo-list"></ul>
       </section>

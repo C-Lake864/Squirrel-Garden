@@ -65,16 +65,56 @@ function garden() {
 
 // ================= API =================
 
-// 목록 보기: ?filter=today | all
+// 카테고리 없음을 가리키는 특별한 값 (?category=__none__)
+const NO_CATEGORY = '__none__';
+
+// 목록 보기
+//   ?filter=today          오늘 마감 + 마감이 지났는데 아직 못 끝낸 할 일
+//   ?filter=date&date=YYYY-MM-DD   그 날짜에 마감인 할 일
+//   ?filter=all (기본)     전부
+//   &category=이름         위 결과 중 그 카테고리만 (__none__ 이면 카테고리 없는 것만)
+// 모든 값은 ? 파라미터로만 넣는다 (SQL 인젝션 방어)
 app.get('/api/todos', ah((req, res) => {
-  const rows =
-    req.query.filter === 'today'
-      ? db
-          // 오늘 마감 + 마감이 지났는데 아직 못 끝낸 할 일
-          .prepare(`SELECT * FROM todos WHERE due_date = ? OR (is_done = 0 AND due_date < ?) ORDER BY is_done, due_date, id`)
-          .all(todayStr(), todayStr())
-      : db.prepare(`SELECT * FROM todos ORDER BY is_done, due_date IS NULL, due_date, id`).all();
-  res.json(rows);
+  const { filter, date, category } = req.query;
+  const where = [];
+  const params = [];
+
+  if (filter === 'today') {
+    where.push('(due_date = ? OR (is_done = 0 AND due_date < ?))');
+    params.push(todayStr(), todayStr());
+  } else if (filter === 'date') {
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: '날짜 형식이 올바르지 않아요.' });
+    }
+    where.push('due_date = ?');
+    params.push(date);
+  }
+
+  if (typeof category === 'string' && category !== '') {
+    if (category === NO_CATEGORY) {
+      where.push("(category IS NULL OR category = '')");
+    } else {
+      where.push('category = ?');
+      params.push(category);
+    }
+  }
+
+  const sql =
+    `SELECT * FROM todos ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ` +
+    `ORDER BY is_done, due_date IS NULL, due_date, id`;
+  res.json(db.prepare(sql).all(...params));
+}));
+
+// 카테고리 필터 버튼을 만들 목록: 쓰이고 있는 카테고리 이름들 + 카테고리 없는 할 일 수
+app.get('/api/categories', ah((_req, res) => {
+  const categories = db
+    .prepare(`SELECT category FROM todos WHERE category IS NOT NULL AND category <> '' GROUP BY category ORDER BY category`)
+    .all()
+    .map((r) => r.category);
+  const uncategorized = db
+    .prepare(`SELECT COUNT(*) AS n FROM todos WHERE category IS NULL OR category = ''`)
+    .get().n;
+  res.json({ categories, uncategorized });
 }));
 
 // 추가 (파라미터화 쿼리)

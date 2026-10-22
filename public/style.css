@@ -118,12 +118,42 @@ main { display: flex; flex-direction: column; gap: 26px; }
   outline: 3px solid var(--focus); outline-offset: 2px;
 }
 
-.filters { display: flex; gap: 8px; margin: 20px 0 16px; }
+.filters { display: flex; gap: 8px; margin: 20px 0 12px; }
 .filters button {
   padding: 8px 18px; border: 1.5px solid var(--ink); background: transparent;
   border-radius: 99px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink); font-family: inherit;
 }
 .filters button.active { background: var(--ink); color: var(--cream); }
+
+/* 날짜별 보기: 이전/다음 날 이동 */
+.date-nav { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.date-nav[hidden] { display: none; }
+.date-nav input[type="date"] {
+  flex: 1; min-width: 0; padding: 9px 18px; border: 1.5px solid var(--ink); border-radius: 99px;
+  background: transparent; color: var(--ink); font-size: 14px; font-family: inherit;
+}
+.date-nav input[type="date"]:focus { outline: 3px solid var(--focus); border-color: var(--sage); }
+.nav-btn {
+  flex: 0 0 auto; width: 40px; height: 40px; padding: 0 0 3px; border: 1.5px solid var(--ink); border-radius: 50%;
+  background: transparent; color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer;
+}
+.nav-btn:hover { background: var(--cream-2); }
+.today-btn {
+  flex: 0 0 auto; padding: 9px 15px; border: 1.5px solid var(--ink); border-radius: 99px;
+  background: var(--yellow); color: var(--ink); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.today-btn:disabled { opacity: 0.45; cursor: default; }
+.nav-btn:focus-visible, .today-btn:focus-visible, .cats button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* 카테고리 필터 */
+.cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.cats[hidden] { display: none; }
+.cats button {
+  padding: 6px 13px; border: 1.5px solid transparent; border-radius: 99px;
+  background: var(--due); color: var(--ink); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.cats button:hover { filter: brightness(0.96); }
+.cats button.active { background: var(--sage); border-color: var(--ink); }
 
 #todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .todo {

@@ -24,6 +24,14 @@ async function api(path, opts) {
   return res.json();
 }
 
+// 카테고리 이름으로 태그 색을 정한다 (같은 이름은 항상 같은 색)
+const CHIP_CLASSES = ['chip-pink', 'chip-blue', 'chip-lav', 'chip-lime'];
+function chipClass(name) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return CHIP_CLASSES[h % CHIP_CLASSES.length];
+}
+
 // ---------- 나무 그림(SVG) ----------
 function treeSVG(level) {
   const ground = `<rect x="0" y="144" width="240" height="36" fill="none"/>`;
@@ -59,12 +67,12 @@ async function loadGarden() {
     <h2>${g.stageName}</h2>
     <div class="scene">${treeSVG(g.level)}<img class="squirrel" src="squirrel.png" alt="다람쥐"></div>
     <div class="acorn-count">이번 달 알밤 <strong>${g.acorns}</strong>개 <span class="month">(${g.month})</span></div>
-    <div class="acorns">${'🌰'.repeat(Math.min(g.acorns, 30)) || '아직 없어요'}</div>
+    <div class="acorns">${'<span class="acorn-dot"></span>'.repeat(Math.min(g.acorns, 30)) || '<span class="acorns-empty">아직 없어요</span>'}</div>
     <div class="progress">
       <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
-      <div class="progress-label">${g.nextMilestone ? `다음 단계까지 알밤 ${g.remainingToNext}개` : '🎉 최고 단계 달성!'}</div>
+      <div class="progress-label">${g.nextMilestone ? `다음 단계까지 알밤 ${g.remainingToNext}개` : '최고 단계 달성!'}</div>
     </div>
-    <div class="today-status">${g.todayEarned ? '✅ 오늘 알밤을 묻었어요!' : '오늘 마감 할 일을 모두 끝내면 알밤을 묻어요.'}</div>`;
+    <div class="today-status">${g.todayEarned ? '✓ 오늘 알밤을 묻었어요!' : '오늘 마감 할 일을 모두 끝내면 알밤을 묻어요.'}</div>`;
 }
 
 // ---------- 할 일 목록 그리기 ----------
@@ -84,20 +92,22 @@ async function loadTodos() {
         const overdue = !t.is_done && t.due_date < today;
         if (overdue) cls += ' overdue';
         else if (t.due_date === today) cls += ' today';
-        dueHtml = `<span class="${cls}">📅 ${t.due_date}${overdue ? ' (지남)' : ''}</span>`;
+        dueHtml = `<span class="${cls}">${t.due_date}${overdue ? ' · 지남' : ''}</span>`;
       }
-      const catHtml = t.category ? `<span class="chip">#${escapeHtml(t.category)}</span>` : '';
+      const catHtml = t.category ? `<span class="chip ${chipClass(t.category)}">${escapeHtml(t.category)}</span>` : '';
       const tinyHtml = t.is_tiny ? `<span class="tiny-badge">대충 모드</span>` : '';
       const shrinkBtn = t.is_tiny
-        ? `<button data-restore="${t.id}">↩︎ 원래대로</button>`
+        ? `<button data-restore="${t.id}">원래대로</button>`
         : `<button data-shrink="${t.id}">대충하기</button>`;
       return `<li class="todo ${t.is_done ? 'done' : ''}">
+        <div class="todo-main">
+          <div class="meta">${catHtml}${dueHtml}${tinyHtml}</div>
+          <div class="title">${escapeHtml(t.title)}</div>
+          <div class="actions">${shrinkBtn}<button class="danger" data-delete="${t.id}">삭제</button></div>
+        </div>
         <label class="check">
-          <input type="checkbox" ${t.is_done ? 'checked' : ''} data-toggle="${t.id}">
-          <span class="title">${escapeHtml(t.title)}</span>
+          <input type="checkbox" aria-label="${escapeHtml(t.title)} 완료" ${t.is_done ? 'checked' : ''} data-toggle="${t.id}">
         </label>
-        <div class="meta">${catHtml}${dueHtml}${tinyHtml}</div>
-        <div class="actions">${shrinkBtn}<button class="danger" data-delete="${t.id}">🗑️</button></div>
       </li>`;
     })
     .join('');
@@ -148,7 +158,7 @@ document.getElementById('todo-list').addEventListener('click', async (e) => {
     li.insertAdjacentHTML('beforeend', `<div class="suggest">
       <p>부담될 땐 아주 작게! 이 중에 하나로 바꿔 볼까요?</p>
       ${suggestions.map((s) => `<button data-pick="${id}" data-text="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}
-      <button data-custom="${id}">✏️ 직접 입력</button>
+      <button data-custom="${id}">직접 입력</button>
       <button data-cancel="${id}">닫기</button>
     </div>`);
     return;

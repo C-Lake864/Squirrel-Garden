@@ -134,19 +134,41 @@ document.querySelectorAll('.filters button').forEach((btn) =>
 
 // 목록 안의 버튼/체크박스는 위임으로 한 번에 처리
 document.getElementById('todo-list').addEventListener('click', async (e) => {
-  const el = e.target.closest('[data-toggle],[data-shrink],[data-restore],[data-delete]');
+  const el = e.target.closest('[data-toggle],[data-shrink],[data-pick],[data-custom],[data-cancel],[data-restore],[data-delete]');
   if (!el) return;
 
   if (el.dataset.toggle) {
     await api(`/api/todos/${el.dataset.toggle}/toggle`, { method: 'POST' });
   } else if (el.dataset.shrink) {
-    const small = prompt('부담될 땐 아주 작게! 더 작은 할 일로 바꿔보세요.\n(예: "방 청소" → "책상만 정리")');
+    // 추천 후보를 보여 준다 (이미 열려 있으면 그대로 두고 return)
+    const li = el.closest('li');
+    if (li.querySelector('.suggest')) return;
+    const { suggestions } = await api(`/api/todos/${el.dataset.shrink}/suggestions`);
+    const id = el.dataset.shrink;
+    li.insertAdjacentHTML('beforeend', `<div class="suggest">
+      <p>부담될 땐 아주 작게! 이 중에 하나로 바꿔 볼까요?</p>
+      ${suggestions.map((s) => `<button data-pick="${id}" data-text="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}
+      <button data-custom="${id}">✏️ 직접 입력</button>
+      <button data-cancel="${id}">닫기</button>
+    </div>`);
+    return;
+  } else if (el.dataset.pick) {
+    await api(`/api/todos/${el.dataset.pick}/shrink`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: el.dataset.text }),
+    });
+  } else if (el.dataset.custom) {
+    const small = prompt('더 작은 할 일로 바꿔보세요.\n(예: "방 청소" → "책상만 정리")');
     if (!small || !small.trim()) return;
-    await api(`/api/todos/${el.dataset.shrink}/shrink`, {
+    await api(`/api/todos/${el.dataset.custom}/shrink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: small }),
     });
+  } else if (el.dataset.cancel) {
+    el.closest('.suggest').remove();
+    return;
   } else if (el.dataset.restore) {
     await api(`/api/todos/${el.dataset.restore}/restore`, { method: 'POST' });
   } else if (el.dataset.delete) {

@@ -91,3 +91,22 @@ test('잘못된 JSON에도 서버가 죽지 않고 에러 JSON을 반환', async
   assert.ok(res.status >= 400 && res.status < 500);
   assert.ok((await res.json()).error); // 공통 에러 핸들러가 JSON 형태 유지
 });
+
+test('대충하기 추천 후보를 받아 그대로 적용할 수 있다', async () => {
+  const add = await json('/api/todos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: '방 청소' }),
+  });
+  const { suggestions } = await json(`/api/todos/${add.id}/suggestions`);
+  assert.equal(suggestions.length, 3);
+
+  await get(`/api/todos/${add.id}/shrink`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: suggestions[0] }),
+  });
+  const todo = (await json('/api/todos?filter=all')).find((t) => t.id === add.id);
+  assert.equal(todo.title, suggestions[0]);
+  assert.equal(todo.is_tiny, 1);
+
+  assert.equal((await get('/api/todos/999999/suggestions')).status, 404);
+});

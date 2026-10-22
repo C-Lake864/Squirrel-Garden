@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import { db } from './db.js';
 import { acornsToStage } from './garden-logic.js';
+import { suggestSmaller } from './shrink-suggest.js';
 
 const app = express();
 app.use(express.json());
@@ -94,6 +95,13 @@ app.post('/api/todos/:id/toggle', ah((req, res) => {
     .run(next, next ? new Date().toISOString() : null, id);
   recomputeDate(cur.due_date); // 그 할 일의 마감일 기준으로 재계산
   res.json({ ok: true });
+}));
+
+// 대충하기 추천: 이 할 일을 더 작게 바꿀 문장 후보
+app.get('/api/todos/:id/suggestions', ah((req, res) => {
+  const cur = db.prepare(`SELECT title, is_tiny, original_title FROM todos WHERE id = ?`).get(Number(req.params.id));
+  if (!cur) return res.status(404).json({ error: '없는 할 일입니다.' });
+  res.json({ suggestions: suggestSmaller(cur.is_tiny ? cur.original_title : cur.title) });
 }));
 
 // 대충하기: 더 작은 문장으로 바꾸기 (원래 문장은 보관)

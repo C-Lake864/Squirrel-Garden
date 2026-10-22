@@ -8,6 +8,19 @@ const todayStr = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
+// 지금 보고 있는 조건
+const NO_CATEGORY = '__none__';
+let currentDate = todayStr();   // '날짜별' 보기에서 고른 날짜
+let currentCategory = '';       // '' = 모두, '__none__' = 카테고리 없음, 그 외 = 카테고리 이름
+
+// 날짜 문자열('YYYY-MM-DD')에서 n일 뒤(음수면 앞) 날짜
+const pad2 = (n) => String(n).padStart(2, '0');
+function shiftDate(str, n) {
+  const [y, m, d] = str.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
 // 사용자가 입력한 글자가 HTML을 깨뜨리지 않도록 escape (안전)
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) =>
@@ -26,87 +39,93 @@ async function api(path, opts) {
 
 // ---------- 나무 그림(SVG) ----------
 function treeSVG(level) {
-  const ground = `<rect x="0" y="144" width="240" height="36" fill="none"/>`;
+  const open = '<svg viewBox="0 0 240 180" style="display:block;width:100%;height:auto">';
   if (level === 0) {
-    return `<svg viewBox="0 0 240 180">${ground}
-      <ellipse cx="120" cy="150" rx="22" ry="7" fill="#8a6a41"/>
-      <circle cx="120" cy="144" r="5" fill="#b07c43"/></svg>`;
+    return `${open}<ellipse cx="120" cy="150" rx="22" ry="7" fill="#a7825a"/><circle cx="120" cy="144" r="5" fill="#a7825a"/></svg>`;
+  }
+  if (level <= 2) {
+    // 1~2단계: 줄기 끝에 잎 두 장이 달린 새싹
+    const h = 24, top = 150 - h;
+    const leaf = (y, s) =>
+      `<ellipse cx="${120 - 9 * s}" cy="${y}" rx="${9 * s}" ry="${4.2 * s}" transform="rotate(25 ${120 - 9 * s} ${y})" fill="#8a8f55"/>` +
+      `<ellipse cx="${120 + 9 * s}" cy="${y}" rx="${9 * s}" ry="${4.2 * s}" transform="rotate(-25 ${120 + 9 * s} ${y})" fill="#a3a66a"/>`;
+    const w = level === 1 ? 3 : 5;
+    return `${open}<ellipse cx="120" cy="152" rx="${level === 1 ? 22 : 26}" ry="7" fill="#a7825a"/>` +
+      `<rect x="${120 - w / 2}" y="${top}" width="${w}" height="${h}" rx="2" fill="#8a8f55"/>${leaf(top + 2, 1.3)}</svg>`;
   }
   const spec = {
-    1: { trunkH: 16, trunkW: 5, canopy: [[120, 128, 15]] },
-    2: { trunkH: 30, trunkW: 7, canopy: [[120, 112, 22]] },
     3: { trunkH: 48, trunkW: 10, canopy: [[120, 92, 32]] },
     4: { trunkH: 70, trunkW: 14, canopy: [[120, 70, 42], [98, 88, 28], [142, 88, 28]] },
     5: { trunkH: 92, trunkW: 18, canopy: [[120, 48, 50], [88, 78, 36], [152, 78, 36], [120, 92, 38]] },
   }[level];
-  const baseY = 150;
-  const trunk = `<rect x="${120 - spec.trunkW / 2}" y="${baseY - spec.trunkH}" width="${spec.trunkW}" height="${spec.trunkH}" rx="3" fill="#7b5233"/>`;
+  const trunk = `<rect x="${120 - spec.trunkW / 2}" y="${150 - spec.trunkH}" width="${spec.trunkW}" height="${spec.trunkH}" rx="3" fill="#6e4a2e"/>`;
   const leaves = spec.canopy
-    .map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#4c9a5a"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#5fb26e" opacity="0.5"/>`)
+    .map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#8a8f55"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#a3a66a" opacity="0.5"/>`)
     .join('');
-  return `<svg viewBox="0 0 240 180">${ground}
-    <ellipse cx="120" cy="152" rx="28" ry="7" fill="#8a6a41"/>
-    ${trunk}${leaves}</svg>`;
+  return `${open}<ellipse cx="120" cy="152" rx="28" ry="7" fill="#a7825a"/>${trunk}${leaves}</svg>`;
 }
 
-// ---------- 다람쥐 그림(SVG): 크레용으로 그린 듯한 동글동글한 모습 ----------
-function squirrelSVG() {
-  return `<svg viewBox="0 0 230 232" role="img" aria-label="다람쥐">
-    <g filter="url(#crayon)">
-      <g class="tail">
-        <path d="M120 202 C192 218 222 152 206 100 C196 58 154 26 126 46 C112 56 118 76 136 72 C152 72 160 96 156 124 C152 154 138 176 114 178 Z" fill="#b8692b"/>
-        <path d="M150 112 C158 90 152 70 136 64 C158 54 190 80 192 112 C194 142 172 164 142 168 C150 154 148 132 150 112 Z" fill="#d38845" opacity=".85"/>
-      </g>
-      <ellipse cx="108" cy="162" rx="50" ry="54" fill="#ea9440"/>
-      <ellipse cx="92" cy="174" rx="28" ry="38" fill="#f8cc96"/>
-      <ellipse cx="88" cy="214" rx="23" ry="10" fill="#d8812f"/>
-      <ellipse cx="128" cy="216" rx="23" ry="10" fill="#d8812f"/>
-      <ellipse cx="56" cy="58" rx="16" ry="20" transform="rotate(-18 56 58)" fill="#ea9440"/>
-      <ellipse cx="57" cy="60" rx="8" ry="11" transform="rotate(-18 57 60)" fill="#d27a2c"/>
-      <ellipse cx="124" cy="58" rx="16" ry="20" transform="rotate(18 124 58)" fill="#ea9440"/>
-      <ellipse cx="123" cy="60" rx="8" ry="11" transform="rotate(18 123 60)" fill="#d27a2c"/>
-      <ellipse cx="90" cy="98" rx="55" ry="47" fill="#ee9a43"/>
-      <ellipse cx="90" cy="112" rx="30" ry="22" fill="#f8cc96" opacity=".7"/>
-      <circle cx="50" cy="112" r="10" fill="#f08a86" opacity=".85"/>
-      <circle cx="130" cy="112" r="10" fill="#f08a86" opacity=".85"/>
-      <circle cx="68" cy="94" r="6.4" fill="#3a2418"/>
-      <circle cx="70" cy="92" r="2.1" fill="#fff"/>
-      <circle cx="112" cy="94" r="6.4" fill="#3a2418"/>
-      <circle cx="114" cy="92" r="2.1" fill="#fff"/>
-      <ellipse cx="90" cy="106" rx="7" ry="5.4" fill="#5b3220"/>
-      <path d="M78 115 Q84 124 90 115 Q96 124 102 115" fill="none" stroke="#5b3220" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <ellipse cx="94" cy="154" rx="11" ry="13" fill="#8a5a2b"/>
-      <path d="M82 148 Q94 136 106 148 Z" fill="#5b3a1c"/>
-      <ellipse cx="78" cy="156" rx="11" ry="9" transform="rotate(-20 78 156)" fill="#f0a85a"/>
-      <ellipse cx="110" cy="156" rx="11" ry="9" transform="rotate(20 110 156)" fill="#f0a85a"/>
-    </g>
-  </svg>`;
+// 도토리 아이콘 (채워진 것 = 다음 단계까지 진행한 만큼)
+function acornIcon(filled) {
+  const body = filled ? '#9a5a2e' : 'rgba(43,33,25,0.3)';
+  const base = filled ? '#e3c595' : 'rgba(43,33,25,0.3)';
+  return `<svg viewBox="0 0 24 26" width="22" height="24" aria-hidden="true">
+    <path d="M12 2.5L13.2 4.6C18.5 5.4 22.8 9.5 22.8 15.5C22.8 21.2 18 25 12 25C6 25 1.2 21.2 1.2 15.5C1.2 9.5 5.5 5.4 10.8 4.6Z" fill="${body}"/>
+    <path d="M1.8 18.8C5 20.8 19 20.8 22.2 18.8C21 22.6 17 25 12 25C7 25 3 22.6 1.8 18.8Z" fill="${base}"/></svg>`;
 }
+
+// 받침이 있으면 '이', 없으면 '가' (새싹이 / 묘목이 / 작은 나무가)
+const josa = (word) => ((word.charCodeAt(word.length - 1) - 0xac00) % 28 ? '이' : '가');
+
+const STATUS_TEXT =
+  '오늘의 할 일을 모두 끝내면 다람쥐가 알밤을 하나씩 묻어요. 알밤의 개수가 쌓일수록 나무가 자라요. 하루라도 건너뛰게 되면 원래대로 돌아와요.\n\n' +
+  '하지만 걱정마세요! 대충모드를 사용하여 부담없이 매일의 습관을 만들어보아요!';
 
 // ---------- 정원 그리기 ----------
+// g.acorns = 연속으로 알밤을 얻은 날 수(나무 단계), g.totalAcorns = 지금까지 모은 알밤 전체
 async function loadGarden() {
   const g = await api('/api/garden');
   const prev = [0, 5, 10, 15, 20].filter((t) => t <= g.acorns).pop() ?? 0;
   const pct = g.nextMilestone ? Math.round(((g.acorns - prev) / (g.nextMilestone - prev)) * 100) : 100;
+  const filled = Math.round(pct / 10);
+  const dots = Array.from({ length: 10 }, (_, i) => acornIcon(i < filled)).join('');
+  const title = g.level === 0 ? g.stageName : `${g.stageName}${josa(g.stageName)} 자랐어요!`;
 
+  document.getElementById('status').textContent = g.todayEarned ? '✓ 오늘 알밤을 묻었어요!' : STATUS_TEXT;
   document.getElementById('garden').innerHTML = `
-    <h2>${g.stageName}</h2>
-    <div class="scene">${treeSVG(g.level)}<div class="squirrel">${squirrelSVG()}</div></div>
-    <div class="acorn-count">이번 달 알밤 <strong>${g.acorns}</strong>개 <span class="month">(${g.month})</span></div>
-    <div class="acorns">${'🌰'.repeat(Math.min(g.acorns, 30)) || '아직 없어요'}</div>
+    <h2>${title}</h2>
+    <div class="scene">${treeSVG(g.level)}<img class="squirrel" src="squirrel.png" alt="다람쥐"></div>
+    <div class="acorn-count">알밤을 총 <strong>${g.totalAcorns}</strong>개 모았어요</div>
+    <div class="acorns" role="img" aria-label="다음 단계까지 ${pct}% 진행">${dots}</div>
     <div class="progress">
       <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
-      <div class="progress-label">${g.nextMilestone ? `다음 단계까지 알밤 ${g.remainingToNext}개` : '🎉 최고 단계 달성!'}</div>
-    </div>
-    <div class="today-status">${g.todayEarned ? '✅ 오늘 알밤을 묻었어요!' : '오늘 마감 할 일을 모두 끝내면 알밤을 묻어요.'}</div>`;
+      <div class="progress-label">${g.nextMilestone ? `다음 단계까지 알밤 ${g.remainingToNext}개` : '최고 단계 달성!'}</div>
+    </div>`;
 }
 
 // ---------- 할 일 목록 그리기 ----------
+function updateListTitle() {
+  const el = document.getElementById('list-title');
+  if (currentFilter === 'all') el.textContent = '전체 할 일';
+  else if (currentFilter === 'date' && currentDate !== todayStr()) {
+    const [, m, d] = currentDate.split('-').map(Number);
+    el.textContent = `${m}월 ${d}일의 할 일`;
+  } else el.textContent = '오늘의 할 일';
+}
+
 async function loadTodos() {
-  const todos = await api(`/api/todos?filter=${currentFilter}`);
+  updateListTitle();
+  const q = new URLSearchParams({ filter: currentFilter });
+  if (currentFilter === 'date') q.set('date', currentDate);
+  if (currentCategory) q.set('category', currentCategory);
+  const todos = await api(`/api/todos?${q}`);
   const ul = document.getElementById('todo-list');
   if (todos.length === 0) {
-    ul.innerHTML = `<li class="empty">${currentFilter === 'today' ? '오늘 할 일이 없어요. 하나 추가해볼까요?' : '할 일이 없어요.'}</li>`;
+    let msg = '할 일이 없어요.';
+    if (currentCategory) msg = '이 카테고리에는 할 일이 없어요.';
+    else if (currentFilter === 'today') msg = '오늘 할 일이 없어요. 하나 추가해볼까요?';
+    else if (currentFilter === 'date') msg = '이 날에는 할 일이 없어요.';
+    ul.innerHTML = `<li class="empty">${msg}</li>`;
     return;
   }
   const today = todayStr();
@@ -118,26 +137,43 @@ async function loadTodos() {
         const overdue = !t.is_done && t.due_date < today;
         if (overdue) cls += ' overdue';
         else if (t.due_date === today) cls += ' today';
-        dueHtml = `<span class="${cls}">📅 ${t.due_date}${overdue ? ' (지남)' : ''}</span>`;
+        dueHtml = `<span class="${cls}">${t.due_date}${overdue ? ' · 지남' : ''}</span>`;
       }
-      const catHtml = t.category ? `<span class="chip">#${escapeHtml(t.category)}</span>` : '';
+      const catHtml = t.category ? `<span class="chip">${escapeHtml(t.category)}</span>` : '';
       const tinyHtml = t.is_tiny ? `<span class="tiny-badge">대충 모드</span>` : '';
       const shrinkBtn = t.is_tiny
-        ? `<button data-restore="${t.id}">↩︎ 원래대로</button>`
+        ? `<button data-restore="${t.id}">원래대로</button>`
         : `<button data-shrink="${t.id}">대충하기</button>`;
       return `<li class="todo ${t.is_done ? 'done' : ''}">
+        <div class="todo-main">
+          <div class="meta">${catHtml}${dueHtml}${tinyHtml}</div>
+          <div class="title">${escapeHtml(t.title)}</div>
+          <div class="actions">${shrinkBtn}<button class="danger" data-delete="${t.id}">삭제</button></div>
+        </div>
         <label class="check">
-          <input type="checkbox" ${t.is_done ? 'checked' : ''} data-toggle="${t.id}">
-          <span class="title">${escapeHtml(t.title)}</span>
+          <input type="checkbox" aria-label="${escapeHtml(t.title)} 완료" ${t.is_done ? 'checked' : ''} data-toggle="${t.id}">
         </label>
-        <div class="meta">${catHtml}${dueHtml}${tinyHtml}</div>
-        <div class="actions">${shrinkBtn}<button class="danger" data-delete="${t.id}">🗑️</button></div>
       </li>`;
     })
     .join('');
 }
 
+// 쓰이고 있는 카테고리로 필터 버튼을 만든다
+async function loadCategories() {
+  const { categories, uncategorized } = await api('/api/categories');
+  const items = [['', '모두'], ...categories.map((c) => [c, c])];
+  if (uncategorized > 0) items.push([NO_CATEGORY, '미분류']);
+  // 보고 있던 카테고리가 사라졌으면(마지막 할 일을 지움 등) 모두로 되돌린다
+  if (!items.some(([v]) => v === currentCategory)) currentCategory = '';
+  const box = document.getElementById('cats');
+  box.hidden = categories.length === 0; // 카테고리가 하나도 없으면 필터 줄을 숨긴다
+  box.innerHTML = items
+    .map(([v, label]) => `<button type="button" data-cat="${escapeHtml(v)}" class="${v === currentCategory ? 'active' : ''}" aria-pressed="${v === currentCategory}">${escapeHtml(label)}</button>`)
+    .join('');
+}
+
 async function refresh() {
+  await loadCategories(); // 먼저 해서, 사라진 카테고리를 걸러낸 뒤 목록을 읽는다
   await Promise.all([loadTodos(), loadGarden()]);
 }
 
@@ -157,14 +193,40 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
   refresh();
 });
 
+// ---- 날짜별 보기: 날짜 고르기, 이전/다음 날 ----
+const datePick = document.getElementById('date-pick');
+const dateToday = document.getElementById('date-today');
+function setDate(d) {
+  currentDate = d;
+  datePick.value = d;
+  dateToday.disabled = d === todayStr(); // 이미 오늘이면 '오늘' 버튼은 쓸 필요가 없다
+  loadTodos();
+}
+datePick.value = currentDate;
+dateToday.disabled = true;
+document.getElementById('date-prev').addEventListener('click', () => setDate(shiftDate(currentDate, -1)));
+document.getElementById('date-next').addEventListener('click', () => setDate(shiftDate(currentDate, 1)));
+dateToday.addEventListener('click', () => setDate(todayStr()));
+datePick.addEventListener('change', () => { if (datePick.value) setDate(datePick.value); });
+
 document.querySelectorAll('.filters button').forEach((btn) =>
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filters button').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     currentFilter = btn.dataset.filter;
+    document.getElementById('date-nav').hidden = currentFilter !== 'date';
     loadTodos();
   })
 );
+
+// ---- 카테고리 필터 ----
+document.getElementById('cats').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  currentCategory = btn.dataset.cat;
+  loadCategories();
+  loadTodos();
+});
 
 // 목록 안의 버튼/체크박스는 위임으로 한 번에 처리
 document.getElementById('todo-list').addEventListener('click', async (e) => {
@@ -182,7 +244,7 @@ document.getElementById('todo-list').addEventListener('click', async (e) => {
     li.insertAdjacentHTML('beforeend', `<div class="suggest">
       <p>부담될 땐 아주 작게! 이 중에 하나로 바꿔 볼까요?</p>
       ${suggestions.map((s) => `<button data-pick="${id}" data-text="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}
-      <button data-custom="${id}">✏️ 직접 입력</button>
+      <button data-custom="${id}">직접 입력</button>
       <button data-cancel="${id}">닫기</button>
     </div>`);
     return;

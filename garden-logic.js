@@ -17,3 +17,26 @@ export function acornsToStage(acorns) {
     remainingToNext: nextMilestone ? nextMilestone - acorns : 0,
   };
 }
+
+// ---- 연속 달성(스트릭) ----
+const pad = (n) => String(n).padStart(2, '0');
+const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function prevDay(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d); // 로컬 날짜 기준 (서머타임에 흔들리지 않게 날짜만 쓴다)
+  dt.setDate(dt.getDate() - 1);
+  return fmt(dt);
+}
+
+// 알밤을 얻은 날짜들과 '오늘'을 받아, 오늘까지(오늘이 아직이면 어제까지) 연속으로 얻은 날 수를 돌려준다.
+// 오늘은 아직 끝나지 않았으므로 오늘 알밤이 없다고 바로 끊기지는 않는다.
+export function currentStreak(earnedDates, today) {
+  const earned = new Set(earnedDates);
+  let day = earned.has(today) ? today : prevDay(today);
+  let n = 0;
+  while (earned.has(day)) {
+    n += 1;
+    day = prevDay(day);
+  }
+  return n;
+}

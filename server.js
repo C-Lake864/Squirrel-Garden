@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { db } from './db.js';
-import { acornsToStage } from './garden-logic.js';
+import { acornsToStage, currentStreak } from './garden-logic.js';
 import { suggestSmaller } from './shrink-suggest.js';
 
 const app = express();
@@ -19,7 +19,6 @@ function todayStr() {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-const monthPrefix = () => todayStr().slice(0, 7); // 'YYYY-MM'
 
 // 라우트에서 던진 에러를 공통 에러 핸들러로 넘겨주는 래퍼 (동기/비동기 모두 처리)
 const ah = (fn) => (req, res, next) => {
@@ -49,29 +48,73 @@ function recomputeDate(date) {
   ).run(date, earned);
 }
 
-// ---- 이번 달 알밤 수 → 나무 단계 ----
+// ---- 연속으로 알밤을 얻은 날 수 → 나무 단계, 누적 총합은 따로 ----
+// acorns = 오늘(아직이면 어제)까지 연속으로 알밤을 얻은 날 수. 하루 건너뛰면 0부터 다시 시작한다.
+// totalAcorns = 지금까지 얻은 알밤 전체 (끊겨도 줄지 않는다).
 function garden() {
-  const acorns = db
-    .prepare(`SELECT COUNT(*) AS n FROM daily_progress WHERE earned = 1 AND date LIKE ?`)
-    .get(monthPrefix() + '%').n;
-  const todayRow = db.prepare(`SELECT earned FROM daily_progress WHERE date = ?`).get(todayStr());
+  const earnedDates = db.prepare(`SELECT date FROM daily_progress WHERE earned = 1`).all().map((r) => r.date);
+  const today = todayStr();
+  const acorns = currentStreak(earnedDates, today);
   return {
-    month: monthPrefix(),
     acorns,
+    totalAcorns: earnedDates.length,
     ...acornsToStage(acorns),
-    todayEarned: !!(todayRow && todayRow.earned),
+    todayEarned: earnedDates.includes(today),
   };
 }
 
 // ================= API =================
 
-// 목록 보기: ?filter=today | all
+// 카테고리 없음을 가리키는 특별한 값 (?category=__none__)
+const NO_CATEGORY = '__none__';
+
+// 목록 보기
+//   ?filter=today          오늘 마감 + 마감이 지났는데 아직 못 끝낸 할 일
+//   ?filter=date&date=YYYY-MM-DD   그 날짜에 마감인 할 일
+//   ?filter=all (기본)     전부
+//   &category=이름         위 결과 중 그 카테고리만 (__none__ 이면 카테고리 없는 것만)
+// 모든 값은 ? 파라미터로만 넣는다 (SQL 인젝션 방어)
 app.get('/api/todos', ah((req, res) => {
-  const rows =
-    req.query.filter === 'today'
-      ? db.prepare(`SELECT * FROM todos WHERE due_date = ? ORDER BY is_done, id`).all(todayStr())
-      : db.prepare(`SELECT * FROM todos ORDER BY is_done, due_date IS NULL, due_date, id`).all();
-  res.json(rows);
+  const { filter, date, category } = req.query;
+  const where = [];
+  const params = [];
+
+  if (filter === 'today') {
+    where.push('(due_date = ? OR (is_done = 0 AND due_date < ?))');
+    params.push(todayStr(), todayStr());
+  } else if (filter === 'date') {
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: '날짜 형식이 올바르지 않아요.' });
+    }
+    where.push('due_date = ?');
+    params.push(date);
+  }
+
+  if (typeof category === 'string' && category !== '') {
+    if (category === NO_CATEGORY) {
+      where.push("(category IS NULL OR category = '')");
+    } else {
+      where.push('category = ?');
+      params.push(category);
+    }
+  }
+
+  const sql =
+    `SELECT * FROM todos ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ` +
+    `ORDER BY is_done, due_date IS NULL, due_date, id`;
+  res.json(db.prepare(sql).all(...params));
+}));
+
+// 카테고리 필터 버튼을 만들 목록: 쓰이고 있는 카테고리 이름들 + 카테고리 없는 할 일 수
+app.get('/api/categories', ah((_req, res) => {
+  const categories = db
+    .prepare(`SELECT category FROM todos WHERE category IS NOT NULL AND category <> '' GROUP BY category ORDER BY category`)
+    .all()
+    .map((r) => r.category);
+  const uncategorized = db
+    .prepare(`SELECT COUNT(*) AS n FROM todos WHERE category IS NULL OR category = ''`)
+    .get().n;
+  res.json({ categories, uncategorized });
 }));
 
 // 추가 (파라미터화 쿼리)

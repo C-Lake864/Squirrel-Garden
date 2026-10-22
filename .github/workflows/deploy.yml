@@ -1,0 +1,39 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 코드 내려받기
+        uses: actions/checkout@v7
+
+      - name: Google Cloud 인증 (키 파일 없이 WIF)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - name: Cloud Run 배포
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: squirrel-garden
+          region: us-central1
+          source: .
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          env_vars: GIT_SHA=${{ github.sha }}
+          flags: >-
+            --service-account=${{ vars.RUNTIME_SA }}
+            --build-service-account=projects/${{ vars.GCP_PROJECT_ID }}/serviceAccounts/${{ vars.BUILD_SA }}
+            --max-instances=1
+
+      - name: 배포 주소
+        run: echo "${{ steps.deploy.outputs.url }}"

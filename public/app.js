@@ -49,40 +49,6 @@ function treeSVG(level) {
     ${trunk}${leaves}</svg>`;
 }
 
-// ---------- 다람쥐 그림(SVG): 크레용으로 그린 듯한 동글동글한 모습 ----------
-function squirrelSVG() {
-  return `<svg viewBox="0 0 230 232" role="img" aria-label="다람쥐">
-    <g filter="url(#crayon)">
-      <g class="tail">
-        <path d="M120 202 C192 218 222 152 206 100 C196 58 154 26 126 46 C112 56 118 76 136 72 C152 72 160 96 156 124 C152 154 138 176 114 178 Z" fill="#b8692b"/>
-        <path d="M150 112 C158 90 152 70 136 64 C158 54 190 80 192 112 C194 142 172 164 142 168 C150 154 148 132 150 112 Z" fill="#d38845" opacity=".85"/>
-      </g>
-      <ellipse cx="108" cy="162" rx="50" ry="54" fill="#ea9440"/>
-      <ellipse cx="92" cy="174" rx="28" ry="38" fill="#f8cc96"/>
-      <ellipse cx="88" cy="214" rx="23" ry="10" fill="#d8812f"/>
-      <ellipse cx="128" cy="216" rx="23" ry="10" fill="#d8812f"/>
-      <ellipse cx="56" cy="58" rx="16" ry="20" transform="rotate(-18 56 58)" fill="#ea9440"/>
-      <ellipse cx="57" cy="60" rx="8" ry="11" transform="rotate(-18 57 60)" fill="#d27a2c"/>
-      <ellipse cx="124" cy="58" rx="16" ry="20" transform="rotate(18 124 58)" fill="#ea9440"/>
-      <ellipse cx="123" cy="60" rx="8" ry="11" transform="rotate(18 123 60)" fill="#d27a2c"/>
-      <ellipse cx="90" cy="98" rx="55" ry="47" fill="#ee9a43"/>
-      <ellipse cx="90" cy="112" rx="30" ry="22" fill="#f8cc96" opacity=".7"/>
-      <circle cx="50" cy="112" r="10" fill="#f08a86" opacity=".85"/>
-      <circle cx="130" cy="112" r="10" fill="#f08a86" opacity=".85"/>
-      <circle cx="68" cy="94" r="6.4" fill="#3a2418"/>
-      <circle cx="70" cy="92" r="2.1" fill="#fff"/>
-      <circle cx="112" cy="94" r="6.4" fill="#3a2418"/>
-      <circle cx="114" cy="92" r="2.1" fill="#fff"/>
-      <ellipse cx="90" cy="106" rx="7" ry="5.4" fill="#5b3220"/>
-      <path d="M78 115 Q84 124 90 115 Q96 124 102 115" fill="none" stroke="#5b3220" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <ellipse cx="94" cy="154" rx="11" ry="13" fill="#8a5a2b"/>
-      <path d="M82 148 Q94 136 106 148 Z" fill="#5b3a1c"/>
-      <ellipse cx="78" cy="156" rx="11" ry="9" transform="rotate(-20 78 156)" fill="#f0a85a"/>
-      <ellipse cx="110" cy="156" rx="11" ry="9" transform="rotate(20 110 156)" fill="#f0a85a"/>
-    </g>
-  </svg>`;
-}
-
 // ---------- 정원 그리기 ----------
 async function loadGarden() {
   const g = await api('/api/garden');
@@ -91,7 +57,7 @@ async function loadGarden() {
 
   document.getElementById('garden').innerHTML = `
     <h2>${g.stageName}</h2>
-    <div class="scene">${treeSVG(g.level)}<div class="squirrel">${squirrelSVG()}</div></div>
+    <div class="scene">${treeSVG(g.level)}<img class="squirrel" src="squirrel.png" alt="다람쥐"></div>
     <div class="acorn-count">이번 달 알밤 <strong>${g.acorns}</strong>개 <span class="month">(${g.month})</span></div>
     <div class="acorns">${'🌰'.repeat(Math.min(g.acorns, 30)) || '아직 없어요'}</div>
     <div class="progress">

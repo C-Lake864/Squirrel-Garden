@@ -65,25 +65,19 @@ main {
 .scene svg { display: block; width: 100%; height: auto; }
 .squirrel {
   position: absolute;
-  right: 6px;
-  bottom: 2px;
-  width: 38%;
-  transform: scaleX(-1);
+  right: 10px;
+  bottom: 6px;
+  width: 40%;
+  height: auto;
   transform-origin: 50% 100%;
   animation: bob 3.2s ease-in-out infinite;
 }
-.squirrel svg { overflow: visible; }
-.squirrel .tail { transform-box: fill-box; transform-origin: 20% 90%; animation: wag 2.6s ease-in-out infinite; }
 @keyframes bob {
-  0%, 100% { transform: scaleX(-1) translateY(0); }
-  50% { transform: scaleX(-1) translateY(-4px); }
-}
-@keyframes wag {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(5deg); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .squirrel, .squirrel .tail { animation: none; }
+  .squirrel { animation: none; }
 }
 
 .acorn-count { margin-top: 16px; font-size: 15px; }

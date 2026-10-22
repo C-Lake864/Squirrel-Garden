@@ -9,6 +9,8 @@ app.use(express.json());
 app.use(express.static('public')); // public/ 안의 화면 파일 제공
 
 const PORT = process.env.PORT || 3000;
+// 로컬 기본값은 내 컴퓨터 전용. 컨테이너(Cloud Run)에서는 HOST=0.0.0.0 으로 연다.
+const HOST = process.env.HOST || '127.0.0.1';
 
 // ---- 날짜 도우미 (로컬 시간 기준) ----
 function todayStr() {
@@ -131,6 +133,12 @@ app.delete('/api/todos/:id', ah((req, res) => {
 // 정원(다람쥐/나무) 상태
 app.get('/api/garden', ah((_req, res) => res.json(garden())));
 
+// 배포 확인용: Cloud Run 이 붙여 주는 리비전 이름과 커밋(빌드 시 GIT_SHA 로 주입)
+app.get('/version', (_req, res) => res.json({
+  revision: process.env.K_REVISION || 'local',
+  commit: process.env.GIT_SHA || 'unknown',
+}));
+
 // ---- 공통 에러 핸들러: 어떤 라우트에서 예외가 나도 일관된 JSON으로 응답 ----
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -138,5 +146,5 @@ app.use((err, _req, res, _next) => {
   res.status(code).json({ error: code === 400 ? '잘못된 요청이에요.' : '서버에서 문제가 발생했어요.' });
 });
 
-// '127.0.0.1' = 내 컴퓨터에서만 접속 허용 (같은 네트워크의 다른 기기 차단)
-app.listen(PORT, '127.0.0.1', () => console.log(`✅ Todo 앱 실행 중 → http://localhost:${PORT}`));
+// HOST 기본값 '127.0.0.1' = 내 컴퓨터에서만 접속 허용 (같은 네트워크의 다른 기기 차단)
+app.listen(PORT, HOST, () => console.log(`✅ Todo 앱 실행 중 → http://localhost:${PORT}`));

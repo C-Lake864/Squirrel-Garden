@@ -65,14 +65,37 @@ test('오늘이 아닌 마감일도 알밤에 반영된다 (개선 #1)', async (
   const day = d.getDate() === 1 ? '02' : '01';
   const otherDay = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${day}`;
 
-  const before = (await json('/api/garden')).acorns;
+  const before = (await json('/api/garden')).totalAcorns;
   const add = await json('/api/todos', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: '다른 날 할 일', due_date: otherDay }),
   });
   await get(`/api/todos/${add.id}/toggle`, { method: 'POST' }); // 완료
-  const after = (await json('/api/garden')).acorns;
+  const after = (await json('/api/garden')).totalAcorns;
   assert.equal(after, before + 1); // 예전 코드였다면 오늘만 재계산돼서 안 늘었을 것
+});
+
+test('정원 응답에 연속 일수(acorns)와 누적 총합(totalAcorns)이 있다', async () => {
+  const g = await json('/api/garden');
+  assert.equal(typeof g.acorns, 'number');
+  assert.equal(typeof g.totalAcorns, 'number');
+  assert.ok(g.totalAcorns >= g.acorns); // 총합은 연속 일수보다 작을 수 없다
+});
+
+test("'오늘 할 일'에는 마감이 지난 미완료 할 일도 보이고, 끝내면 빠진다", async () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 3);
+  const p = (n) => String(n).padStart(2, '0');
+  const past = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const add = await json('/api/todos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: '밀린 할 일', due_date: past }),
+  });
+  const ids = async () => (await json('/api/todos?filter=today')).map((t) => t.id);
+  assert.ok((await ids()).includes(add.id)); // 지났어도 안 끝냈으면 오늘 목록에 보인다
+  await get(`/api/todos/${add.id}/toggle`, { method: 'POST' });
+  assert.ok(!(await ids()).includes(add.id)); // 끝내면 오늘 목록에서는 빠진다
+  assert.ok((await json('/api/todos?filter=all')).some((t) => t.id === add.id)); // 전체에는 남는다
 });
 
 test('빈 제목은 400으로 거부', async () => {

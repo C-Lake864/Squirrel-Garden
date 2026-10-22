@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { db } from './db.js';
-import { acornsToStage } from './garden-logic.js';
+import { acornsToStage, currentStreak } from './garden-logic.js';
 import { suggestSmaller } from './shrink-suggest.js';
 
 const app = express();
@@ -19,7 +19,6 @@ function todayStr() {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-const monthPrefix = () => todayStr().slice(0, 7); // 'YYYY-MM'
 
 // 라우트에서 던진 에러를 공통 에러 핸들러로 넘겨주는 래퍼 (동기/비동기 모두 처리)
 const ah = (fn) => (req, res, next) => {
@@ -49,17 +48,18 @@ function recomputeDate(date) {
   ).run(date, earned);
 }
 
-// ---- 이번 달 알밤 수 → 나무 단계 ----
+// ---- 연속으로 알밤을 얻은 날 수 → 나무 단계, 누적 총합은 따로 ----
+// acorns = 오늘(아직이면 어제)까지 연속으로 알밤을 얻은 날 수. 하루 건너뛰면 0부터 다시 시작한다.
+// totalAcorns = 지금까지 얻은 알밤 전체 (끊겨도 줄지 않는다).
 function garden() {
-  const acorns = db
-    .prepare(`SELECT COUNT(*) AS n FROM daily_progress WHERE earned = 1 AND date LIKE ?`)
-    .get(monthPrefix() + '%').n;
-  const todayRow = db.prepare(`SELECT earned FROM daily_progress WHERE date = ?`).get(todayStr());
+  const earnedDates = db.prepare(`SELECT date FROM daily_progress WHERE earned = 1`).all().map((r) => r.date);
+  const today = todayStr();
+  const acorns = currentStreak(earnedDates, today);
   return {
-    month: monthPrefix(),
     acorns,
+    totalAcorns: earnedDates.length,
     ...acornsToStage(acorns),
-    todayEarned: !!(todayRow && todayRow.earned),
+    todayEarned: earnedDates.includes(today),
   };
 }
 
@@ -69,7 +69,10 @@ function garden() {
 app.get('/api/todos', ah((req, res) => {
   const rows =
     req.query.filter === 'today'
-      ? db.prepare(`SELECT * FROM todos WHERE due_date = ? ORDER BY is_done, id`).all(todayStr())
+      ? db
+          // 오늘 마감 + 마감이 지났는데 아직 못 끝낸 할 일
+          .prepare(`SELECT * FROM todos WHERE due_date = ? OR (is_done = 0 AND due_date < ?) ORDER BY is_done, due_date, id`)
+          .all(todayStr(), todayStr())
       : db.prepare(`SELECT * FROM todos ORDER BY is_done, due_date IS NULL, due_date, id`).all();
   res.json(rows);
 }));

@@ -6,7 +6,7 @@ export function acornsToStage(acorns) {
     { min: 15, level: 3, name: '작은 나무' },
     { min: 10, level: 2, name: '묘목' },
     { min: 5, level: 1, name: '새싹' },
-    { min: 0, level: 0, name: '씨앗 (아직 자라기 전)' },
+    { min: 0, level: 0, name: '씨앗 (곧 싹이 틀 거예요)' },
   ];
   const stage = stages.find((s) => acorns >= s.min);
   const nextMilestone = [5, 10, 15, 20, 25].find((t) => acorns < t) ?? null;

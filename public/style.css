@@ -136,3 +136,9 @@ main {
   .scene { background: linear-gradient(#2b3a44 0%, #2b3a44 60%, #3a3125 60%, #3a3125 100%); }
   .chip { background: #2b3a52; color: #a9c8f0; }
 }
+
+/* 대충하기 추천 후보 */
+.todo .suggest { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.todo .suggest p { flex-basis: 100%; margin: 0; font-size: 13px; opacity: 0.8; }
+.todo .suggest button { padding: 5px 10px; border-radius: 99px; border: 1px solid #e3d9c8; background: transparent; color: inherit; cursor: pointer; }
+.todo .suggest button:hover { background: #f7f2ea; }

@@ -18,6 +18,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      IMAGE: ${{ vars.AR_REPO }}/squirrel-garden:${{ github.sha }}
     steps:
       - name: 저장소 코드 내려받기
         uses: actions/checkout@v7
@@ -28,21 +30,30 @@ jobs:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
 
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: 이미지 만들기와 올리기
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          docker build --tag "$IMAGE" .
+          docker push "$IMAGE"
+
       - name: Cloud Run 배포
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: ${{ vars.SERVICE }}
           region: us-central1
-          source: .
           project_id: ${{ vars.GCP_PROJECT_ID }}
+          image: ${{ env.IMAGE }}
           env_vars: |
             GIT_SHA=${{ github.sha }}
             ENV=${{ vars.ENV }}
           flags: >-
             --service-account=${{ vars.RUNTIME_SA }}
-            --build-service-account=projects/${{ vars.GCP_PROJECT_ID }}/serviceAccounts/${{ vars.BUILD_SA }}
             --max-instances=1
 
-      - name: 배포 주소
-        run: echo "${{ steps.deploy.outputs.url }}"
+      - name: 배포 결과
+        run: |
+          echo "배포된 주소 ${{ steps.deploy.outputs.url }}"
+          echo "배포한 이미지 $IMAGE"

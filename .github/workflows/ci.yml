@@ -1,0 +1,20 @@
+# PR이 올라오거나 배포 워크플로가 부르면 테스트를 돌린다.
+name: ci
+
+on:
+  pull_request:
+  workflow_call:   # 배포 워크플로가 배포 전에 이 검사를 불러 쓴다
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm test

@@ -27,3 +27,8 @@
 버린 대안: 전체 목록을 날짜 제목으로 묶어 보기, 카테고리 제목으로 묶어 보기, 두 방식을 모두 넣기.
 이유: 특정 날의 알밤을 되돌아보기 좋고 연속 달성 규칙과 잘 맞으며, 필터 버튼은 날짜 보기와 겹쳐 쓰기 쉽다. 사용자가 추천안을 선택.
 다시 볼 조건: 마감일 없는 할 일이 늘어 '날짜별'에서 보이지 않는 점이 불편해질 때(그런 할 일은 '전체'에서만 보인다), 카테고리가 많아져 버튼 줄이 길어질 때.
+
+## 2026-10-27 -- 이미지 배포 실습의 기준 저장소를 Squirrel-Garden 으로
+선택: 교안의 friend-agent 대신 이 저장소(Squirrel-Garden)에서 실습한다. 교안의 이름은 friend-agent→squirrel-garden, COMMIT_SHA→GIT_SHA, pytest→npm test 로 바꿔 쓰고, 배포 계정은 기존 github-deployer 를 그대로 쓴다. 버린 대안: friend-agent 저장소에 전용 배포 계정 friend-agent-deployer 를 만들어 진행(이미 만들어 둠, 사용하지 않음).
+이유: 이 저장소에 WIF, 배포 계정, BUILD_SA 변수, Dockerfile, /version(GIT_SHA)이 이미 있어 교안의 시작 상태와 가장 가깝다. 빠진 것은 ci.yml, staging 브랜치와 환경, staging 서비스였다.
+다시 볼 조건: 교안의 고장 난 Dockerfile 실습(섹션 7)처럼 Python/tesseract 전제인 부분을 Node 에 맞출 때.

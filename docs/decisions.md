@@ -32,3 +32,8 @@
 선택: 교안의 friend-agent 대신 이 저장소(Squirrel-Garden)에서 실습한다. 교안의 이름은 friend-agent→squirrel-garden, COMMIT_SHA→GIT_SHA, pytest→npm test 로 바꿔 쓰고, 배포 계정은 기존 github-deployer 를 그대로 쓴다. 버린 대안: friend-agent 저장소에 전용 배포 계정 friend-agent-deployer 를 만들어 진행(이미 만들어 둠, 사용하지 않음).
 이유: 이 저장소에 WIF, 배포 계정, BUILD_SA 변수, Dockerfile, /version(GIT_SHA)이 이미 있어 교안의 시작 상태와 가장 가깝다. 빠진 것은 ci.yml, staging 브랜치와 환경, staging 서비스였다.
 다시 볼 조건: 교안의 고장 난 Dockerfile 실습(섹션 7)처럼 Python/tesseract 전제인 부분을 Node 에 맞출 때.
+
+## 2026-10-27 -- 이미지 정리 정책: 7일 지난 것 삭제, 최근 10개 유지 (드라이런)
+선택: squirrel-garden, cloud-run-source-deploy 두 저장소에 docs/cleanup-policy.json 의 정책(7일보다 오래된 이미지 삭제 + 최근 10개 유지)을 드라이런으로 건다. 실제 삭제(--no-dry-run)는 감사 로그로 지워질 이미지를 확인한 뒤 따로 정한다. 버린 대안: 삭제 정책만 걸기(production 이 쓰는 이미지가 지워질 수 있음), 바로 실제 적용.
+이유: 롤백하려면 이전 리비전이 쓰던 이미지가 남아 있어야 한다. staging 과 production 이미지가 같은 저장소에 함께 쌓이므로 두 환경의 최근 몇 번의 배포를 남기는 기준으로 10개를 잡았다.
+다시 볼 조건: 정책 반영(하루 뒤) 후 감사 로그의 드라이런 결과가 롤백에 필요한 이미지를 포함할 때, 배포가 잦아져 10개로 부족할 때.

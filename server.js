@@ -188,6 +188,7 @@ app.get('/api/garden', ah((_req, res) => res.json(garden())));
 app.get('/version', (_req, res) => res.json({
   revision: process.env.K_REVISION || 'local',
   commit: process.env.GIT_SHA || 'unknown',
+  banner: process.env.BANNER || '', // 무중단 배포 실습: 어느 쪽(BLUE/GREEN)이 응답했는지 화면에 띄우는 용도
 }));
 
 // ---- 공통 에러 핸들러: 어떤 라우트에서 예외가 나도 일관된 JSON으로 응답 ----

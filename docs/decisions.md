@@ -32,3 +32,9 @@
 선택: 교안의 friend-agent 대신 이 저장소(Squirrel-Garden)에서 실습한다. 교안의 이름은 friend-agent→squirrel-garden, COMMIT_SHA→GIT_SHA, pytest→npm test 로 바꿔 쓰고, 배포 계정은 기존 github-deployer 를 그대로 쓴다. 버린 대안: friend-agent 저장소에 전용 배포 계정 friend-agent-deployer 를 만들어 진행(이미 만들어 둠, 사용하지 않음).
 이유: 이 저장소에 WIF, 배포 계정, BUILD_SA 변수, Dockerfile, /version(GIT_SHA)이 이미 있어 교안의 시작 상태와 가장 가깝다. 빠진 것은 ci.yml, staging 브랜치와 환경, staging 서비스였다.
 다시 볼 조건: 교안의 고장 난 Dockerfile 실습(섹션 7)처럼 Python/tesseract 전제인 부분을 Node 에 맞출 때.
+
+## 2026-10-28 -- 무중단 배포 실습을 다람쥐 정원으로 진행
+선택: 교안의 에이전트 서비스(friend-agent, FastAPI) 대신 다람쥐 정원 이미지로 로컬 Docker 블루그린 실습을 한다. 교안의 BANNER 환경변수는 /version 응답과 화면 배너로 직접 구현하고, 포트는 컨테이너에 PORT=8080 을 주어 맞춘다. 코드는 로컬 브랜치 bluegreen-lab 에만 두고 푸시하지 않는다.
+버린 대안: 교안 템플릿(friend-agent) 사용, BANNER 변경을 PR 로 올려 main 에 반영.
+이유: 템플릿 저장소와 friend-agent 이미지가 없고, 앞 과제들을 이 저장소에서 이어 왔기 때문. 공개 서비스에 실습용 변경이 배포되는 것도 피한다.
+다시 볼 조건: 템플릿 저장소를 받게 되거나, BANNER 기능을 정식 기능으로 쓰고 싶을 때.

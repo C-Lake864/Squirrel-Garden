@@ -274,6 +274,22 @@ document.getElementById('todo-list').addEventListener('click', async (e) => {
   refresh();
 });
 
+// 환경 배너: BANNER 환경변수가 있을 때만 화면 맨 위에 띄운다 (예: BLUE / GREEN)
+async function showBanner() {
+  try {
+    const { banner } = await api('/version');
+    if (!banner) return;
+    const el = document.createElement('div');
+    el.className = 'env-banner';
+    el.dataset.banner = banner;
+    el.textContent = banner;
+    document.body.prepend(el);
+  } catch {
+    /* 배너는 부가 기능이라 실패해도 화면은 그대로 쓴다 */
+  }
+}
+
 // 오늘 날짜를 마감일 기본값으로
 document.getElementById('due_date').value = todayStr();
+showBanner();
 refresh();

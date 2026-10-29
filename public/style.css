@@ -212,3 +212,17 @@ main { display: flex; flex-direction: column; gap: 26px; }
 .todo .suggest button[data-pick] { background: var(--yellow); }
 .todo .suggest button:hover { background: var(--cream); }
 .todo .suggest button[data-pick]:hover { filter: brightness(0.95); }
+
+/* 환경 배너 (BANNER 환경변수가 있을 때만 생긴다) */
+.env-banner {
+  position: sticky; top: 0; z-index: 10;
+  margin: -28px -16px 20px; padding: 8px 16px;
+  text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 0.12em;
+  background: var(--ink); color: var(--cream);
+}
+.env-banner[data-banner="BLUE"] { background: #1f4fd8; color: #ffffff; }
+.env-banner[data-banner="GREEN"] { background: #1f7a3d; color: #ffffff; }
+
+/* 로그인 상태 (AUTH=supabase 일 때 왼쪽 아래에 "게스트로 사용 중") */
+.auth-note { position: fixed; left: 14px; bottom: 10px; margin: 0; font-size: 12px; color: var(--muted); }
+.auth-note:empty { display: none; }

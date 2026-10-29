@@ -27,8 +27,45 @@ const escapeHtml = (s) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
   );
 
-async function api(path, opts) {
-  const res = await fetch(path, opts);
+// ---------- 로그인 (AUTH=supabase 일 때만) ----------
+// 가입 없이 쓰는 익명 로그인: 브라우저마다 게스트 사용자가 하나 생기고, 그 사용자의 토큰으로 서버에 요청한다.
+let supabaseClient = null;
+
+async function authHeaders() {
+  if (!supabaseClient) return {};
+  const { data } = await supabaseClient.auth.getSession(); // 만료되면 알아서 새로 받는다
+  return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+}
+
+async function initAuth() {
+  const note = document.getElementById('auth-note');
+  try {
+    const cfg = await (await fetch('/api/config')).json();
+    if (cfg.auth !== 'supabase') return; // 로그인 없는 모드: 사용자 한 명
+    await new Promise((ok, fail) => {
+      const el = document.createElement('script');
+      el.src = '/vendor/supabase.js'; // 서버가 내려 주는 supabase-js (외부 CDN 아님)
+      el.onload = ok;
+      el.onerror = () => fail(new Error('supabase-js 를 불러오지 못했어요.'));
+      document.head.append(el);
+    });
+    supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
+    let { data } = await supabaseClient.auth.getSession();
+    if (!data.session) {
+      const res = await supabaseClient.auth.signInAnonymously();
+      if (res.error) throw res.error;
+      data = res.data;
+    }
+    note.textContent = '게스트로 사용 중';
+  } catch (e) {
+    note.textContent = '로그인 실패';
+    alert(`로그인을 시작하지 못했습니다.\nSupabase 의 Allow anonymous sign-ins 가 켜져 있는지 확인해 주세요.\n(${e.message})`);
+    throw e;
+  }
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), ...(await authHeaders()) } });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     alert(e.error || '오류가 발생했어요.');
@@ -274,6 +311,22 @@ document.getElementById('todo-list').addEventListener('click', async (e) => {
   refresh();
 });
 
+// 환경 배너: BANNER 환경변수가 있을 때만 화면 맨 위에 띄운다 (예: BLUE / GREEN)
+async function showBanner() {
+  try {
+    const { banner } = await api('/version');
+    if (!banner) return;
+    const el = document.createElement('div');
+    el.className = 'env-banner';
+    el.dataset.banner = banner;
+    el.textContent = banner;
+    document.body.prepend(el);
+  } catch {
+    /* 배너는 부가 기능이라 실패해도 화면은 그대로 쓴다 */
+  }
+}
+
 // 오늘 날짜를 마감일 기본값으로
 document.getElementById('due_date').value = todayStr();
-refresh();
+showBanner();
+initAuth().then(refresh, () => {}); // 로그인이 준비된 뒤에 목록과 정원을 불러온다

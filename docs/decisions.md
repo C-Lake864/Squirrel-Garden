@@ -60,3 +60,8 @@
 버린 대안: main 으로 바로 PR(production 이 먼저 바뀜), push 하지 않음(배포된 서비스에서 실습 불가), 기존 시험용 프로젝트 재사용, staging 만 연결.
 이유: 이번 교안은 배포된 Cloud Run 서비스에서 실습하므로 코드가 이미지에 들어가야 한다. 기본값이 STORAGE=sqlite, AUTH=none 이라 머지해도 환경변수를 넣기 전까지 동작은 그대로다. 환경별 데이터가 섞이지 않게 프로젝트를 나눈다.
 다시 볼 조건: Supabase 무료 플랜 활성 프로젝트 한도(2개)에 걸릴 때, staging 과 production 이 같은 런타임 서비스 계정(squirrel-garden-runtime)을 쓰는 한계를 정리할 때.
+
+## 2026-10-29 -- 자동 블루그린 배포를 staging 과 production 모두에 적용
+선택: deploy.yml 의 배포 단계를 staging 과 production 이 함께 쓰는 그대로 두고, 두 환경 모두 새 리비전을 트래픽 0%로 올린 뒤 스모크 테스트를 거쳐 전환한다. 버린 대안: production 에만 0% 배포 적용.
+이유: 단계마다 "production 일 때만" 조건을 붙이지 않아도 되어 워크플로가 단순하고, 새 절차가 staging 에서 먼저 돌아 실수를 production 전에 잡을 수 있다. 사용자가 단순한 쪽을 선택.
+다시 볼 조건: staging 배포가 검사 단계 때문에 너무 느려질 때, staging 과 production 의 배포 방식을 다르게 가져가야 할 때(예: production 만 카나리).

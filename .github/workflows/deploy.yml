@@ -61,6 +61,8 @@ jobs:
           region: us-central1
           project_id: ${{ vars.GCP_PROJECT_ID }}
           image: ${{ env.IMAGE }}
+          no_traffic: true
+          tag: green
           env_vars: |
             GIT_SHA=${{ env.COMMIT }}
             ENV=${{ vars.ENV }}
@@ -72,3 +74,32 @@ jobs:
         run: |
           echo "배포된 주소 ${{ steps.deploy.outputs.url }}"
           echo "배포한 이미지 $IMAGE"
+
+      # 3. 스모크 테스트: 사용자에게 보내기 전에 green 태그 URL 로 새 리비전만 검사한다. 실패하면 여기서 멈춘다
+      - name: 스모크 테스트 (새 리비전, 트래픽 0%)
+        run: |
+          URL=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format json | jq -r '.status.traffic[] | select(.tag=="green") | .url')
+          if [ -z "$URL" ]; then echo "green 태그 URL 을 찾지 못했다"; exit 1; fi
+          echo "검사할 주소 $URL"
+          for i in $(seq 1 10); do
+            if curl -fsS --max-time 5 "$URL/health" > /dev/null; then
+              GOT=$(curl -fsS --max-time 5 "$URL/version" | jq -r '.commit')
+              echo "$i 번째 시도: /health 정상, 받은 커밋 $GOT"
+              if [ "$GOT" = "$COMMIT" ]; then echo "스모크 테스트 통과"; exit 0; fi
+            else
+              echo "$i 번째 시도: /health 실패"
+            fi
+            sleep 5
+          done
+          echo "스모크 테스트 실패: 새 리비전으로 전환하지 않는다"
+          exit 1
+
+      # 4. 전환: 스모크 테스트를 통과했을 때만 여기까지 온다. 롤백할 곳(이전 리비전)을 로그에 남기고 100% 옮긴다
+      # --to-latest 로 옮겨야 트래픽이 특정 리비전에 고정되지 않아 다음 배포도 같은 흐름으로 돈다
+      - name: 새 리비전으로 전환
+        run: |
+          OLD=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format json | jq -r '[.status.traffic[] | select(.percent > 0) | .revisionName] | join(",")')
+          echo "전환 전 리비전 $OLD (롤백할 때 쓴다)"
+          gcloud run services update-traffic "${{ vars.SERVICE }}" --region us-central1 --to-latest
+          NEW=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format "value(status.latestReadyRevisionName)")
+          echo "전환 후 리비전 $NEW"

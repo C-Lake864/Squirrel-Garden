@@ -54,3 +54,9 @@
 선택: Dockerfile 에 USER node 를 넣는 수정은 이번 실습에서 하지 않고 다음에 할 일로 남긴다. 버린 대안: 지금 PR 을 올려 staging, production 까지 반영.
 이유: 고장 난 Dockerfile 실습(문제 C)에서 현재 Dockerfile 이 USER 줄 없이 root 로 실행되는 것을 확인했다. --user node 로 임시 시험했을 때 화면과 /version 이 정상이라 수정은 가능하다. 다만 교안 범위를 벗어난 변경이고 production 승인이 한 번 더 필요해 미뤘다.
 다시 볼 조건: 다음 배포를 할 때, 또는 보안 점검을 할 때. DATABASE_FILE 이 /tmp 라 쓰기 권한 문제는 없었다.
+
+## 2026-10-29 -- Cloud Run 무중단 배포 실습: Supabase 코드를 staging 으로 PR, 환경별 Supabase 프로젝트 2개
+선택: 로컬에만 있던 supabase-storage 브랜치(BANNER, 요청 확인 스크립트, Supabase 저장소)를 push 하고 staging 대상 PR 로 올린다. 교안 4절에 필요한 /health 와 SLOW_START_SECONDS 도 같은 PR 에 넣는다. Supabase 는 squirrel-garden-staging, squirrel-garden-production 두 프로젝트를 새로 만든다(생성과 키 입력은 사용자가 직접). 2026-10-28 의 "코드는 로컬 브랜치에만" 결정을 바꾼다.
+버린 대안: main 으로 바로 PR(production 이 먼저 바뀜), push 하지 않음(배포된 서비스에서 실습 불가), 기존 시험용 프로젝트 재사용, staging 만 연결.
+이유: 이번 교안은 배포된 Cloud Run 서비스에서 실습하므로 코드가 이미지에 들어가야 한다. 기본값이 STORAGE=sqlite, AUTH=none 이라 머지해도 환경변수를 넣기 전까지 동작은 그대로다. 환경별 데이터가 섞이지 않게 프로젝트를 나눈다.
+다시 볼 조건: Supabase 무료 플랜 활성 프로젝트 한도(2개)에 걸릴 때, staging 과 production 이 같은 런타임 서비스 계정(squirrel-garden-runtime)을 쓰는 한계를 정리할 때.

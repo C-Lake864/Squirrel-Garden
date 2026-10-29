@@ -1,0 +1,64 @@
+# Actions 탭의 Run workflow 버튼으로만 실행하는 원클릭 롤백. 트래픽 100%를 고른 리비전으로 옮긴다.
+# 리비전 칸을 비워 두면 지금 리비전의 바로 전(정상으로 떠 있던) 리비전을 스스로 찾는다.
+# production 을 고르면 배포와 같은 production 환경을 쓰므로 승인을 거친다.
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 되돌릴 환경
+        type: choice
+        options: [staging, production]
+        default: production
+      revision:
+        description: 되돌아갈 리비전 이름 (비워 두면 바로 전 리비전)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Google Cloud 인증 (키 파일 없이 WIF)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: 되돌아갈 리비전 정하기
+        env:
+          SERVICE: ${{ vars.SERVICE }}
+          WANTED: ${{ inputs.revision }}
+        run: |
+          CUR=$(gcloud run services describe "$SERVICE" --region us-central1 --format json | jq -r '[.status.traffic[] | select(.percent > 0)] | max_by(.percent) | .revisionName')
+          # 준비 완료(Ready)였던 리비전만 만든 순서대로 늘어놓는다. 시작에 실패한 리비전으로는 돌아가지 않는다
+          gcloud run revisions list --service "$SERVICE" --region us-central1 --format json \
+            | jq -r '[.[] | select(any(.status.conditions[]?; .type=="Ready" and .status=="True"))] | sort_by(.metadata.creationTimestamp) | map(.metadata.name) | .[]' > ready.txt
+          if [ -n "$WANTED" ]; then
+            if ! grep -qx "$WANTED" ready.txt; then echo "$WANTED 는 없는 리비전이거나 준비 완료 상태가 아니다"; exit 1; fi
+            TARGET="$WANTED"
+          else
+            TARGET=$(grep -x -B1 "$CUR" ready.txt | head -n1)
+            if [ -z "$TARGET" ] || [ "$TARGET" = "$CUR" ]; then echo "$CUR 의 바로 전 리비전을 찾지 못했다"; exit 1; fi
+          fi
+          echo "지금 리비전 $CUR"
+          echo "되돌아갈 리비전 $TARGET"
+          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
+
+      - name: 트래픽 100% 옮기기
+        run: gcloud run services update-traffic "${{ vars.SERVICE }}" --region us-central1 --to-revisions "$TARGET=100"
+
+      - name: 결과 확인 (/version)
+        run: |
+          URL=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format "value(status.url)")
+          curl -fsS --retry 5 --retry-all-errors --retry-delay 3 --max-time 10 "$URL/version"
+          echo
+          echo "다음 배포가 끝까지 돌면 트래픽은 다시 최신 리비전을 따라간다(배포의 전환 단계가 --to-latest 를 쓴다)"

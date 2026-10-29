@@ -98,8 +98,9 @@ jobs:
       # --to-latest 로 옮겨야 트래픽이 특정 리비전에 고정되지 않아 다음 배포도 같은 흐름으로 돈다
       - name: 새 리비전으로 전환
         run: |
-          OLD=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format json | jq -r '[.status.traffic[] | select(.percent > 0) | .revisionName] | join(",")')
+          OLD=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format json | jq -r '[.status.traffic[] | select(.percent > 0)] | max_by(.percent) | .revisionName')
           echo "전환 전 리비전 $OLD (롤백할 때 쓴다)"
-          gcloud run services update-traffic "${{ vars.SERVICE }}" --region us-central1 --to-latest
+          # 사용자에게 공개돼 있던 리비전에 previous 태그를 붙여 둔다. 롤백 버튼은 리비전 칸이 비어 있으면 이 태그로 돌아간다
+          gcloud run services update-traffic "${{ vars.SERVICE }}" --region us-central1 --to-latest --update-tags "previous=$OLD"
           NEW=$(gcloud run services describe "${{ vars.SERVICE }}" --region us-central1 --format "value(status.latestReadyRevisionName)")
           echo "전환 후 리비전 $NEW"

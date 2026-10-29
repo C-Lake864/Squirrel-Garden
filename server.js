@@ -96,10 +96,7 @@ if (config.auth === 'supabase') {
 }
 
 // 스타트업 프로브용: 요청을 받을 준비가 끝났을 때만 200. 준비 전에는 위의 미들웨어가 503 을 돌려준다.
-// 스테이지 6 시험용 고장: Cloud Run 위(K_SERVICE 가 있을 때)에서만 /health 가 항상 503. 로컬 테스트는 통과한다
-app.get('/health', (_req, res) =>
-  process.env.K_SERVICE ? res.status(503).json({ status: 'broken' }) : res.json({ status: 'ok' })
-);
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // 배포 확인용: Cloud Run 이 붙여 주는 리비전 이름과 커밋(빌드 시 GIT_SHA 로 주입)
 app.get('/version', (_req, res) => res.json({

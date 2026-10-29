@@ -24,7 +24,14 @@ const supabaseAdmin =
 const store = await createStorage(config, supabaseAdmin);
 const authenticate = createAuth(config, supabaseAdmin);
 
+// 무중단 배포 실습용 시작 지연: 포트는 바로 열지만 이 시간 동안은 모든 요청에 503(준비 중)을 돌려준다.
+// 시작할 때 무언가를 불러오느라 준비가 늦은 버전을 흉내 낸다. 기본값 0 이면 지연 없음.
+const slowStartMs = Math.max(0, Number(process.env.SLOW_START_SECONDS) || 0) * 1000;
+const readyAt = Date.now() + slowStartMs;
+const isReady = () => Date.now() >= readyAt;
+
 const app = express();
+app.use((_req, res, next) => (isReady() ? next() : res.status(503).json({ error: '준비 중입니다.' })));
 app.use(express.json());
 app.use(express.static('public')); // public/ 안의 화면 파일 제공
 
@@ -87,6 +94,9 @@ if (config.auth === 'supabase') {
   const pkgDir = dirname(createRequire(import.meta.url).resolve('@supabase/supabase-js/package.json'));
   app.get('/vendor/supabase.js', (_req, res) => res.sendFile(join(pkgDir, 'dist', 'umd', 'supabase.js')));
 }
+
+// 스타트업 프로브용: 요청을 받을 준비가 끝났을 때만 200. 준비 전에는 위의 미들웨어가 503 을 돌려준다.
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // 배포 확인용: Cloud Run 이 붙여 주는 리비전 이름과 커밋(빌드 시 GIT_SHA 로 주입)
 app.get('/version', (_req, res) => res.json({

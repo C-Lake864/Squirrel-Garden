@@ -182,3 +182,10 @@ test('/api/categories 는 쓰이는 카테고리와 카테고리 없는 할 일 
   assert.ok(!r.categories.includes('')); // 빈 카테고리는 이름으로 나오지 않는다
   assert.ok(r.uncategorized >= 1);
 });
+
+test('/version 은 revision, commit, banner 를 돌려주고 BANNER 가 없으면 banner 는 빈 문자열', async () => {
+  const v = await json('/version');
+  assert.equal(typeof v.revision, 'string');
+  assert.equal(typeof v.commit, 'string');
+  assert.equal(v.banner, '');
+});
